@@ -38,7 +38,11 @@ jobs:
       - name: Merge upstream changes
         run: |
           git merge --no-edit upstream/main
-
+          
+      - name: Apply stable-only version filter
+        run: |
+          python3 .github/scripts/apply-stable-filter.py
+          
       - name: Push updates to my fork
         run: |
           git push origin HEAD:main
