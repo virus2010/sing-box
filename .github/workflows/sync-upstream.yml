@@ -42,6 +42,13 @@ jobs:
       - name: Apply stable-only version filter
         run: |
           python3 .github/scripts/apply-stable-filter.py
+      
+      - name: Commit customization
+        run: |
+          git add sing-box.sh
+          if ! git diff --cached --quiet; then
+            git commit -m "Apply stable-only version filter"
+          fi
           
       - name: Push updates to my fork
         run: |
