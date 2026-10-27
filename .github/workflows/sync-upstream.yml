@@ -1,0 +1,44 @@
+
+name: Sync Upstream
+
+on:
+  schedule:
+    # 每天北京时间上午 8:00 自动同步
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout my fork
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/fscarmen/sing-box.git
+          git fetch upstream main
+
+      - name: Merge upstream changes
+        run: |
+          git merge --no-edit upstream/main
+
+      - name: Push updates to my fork
+        run: |
+          git push origin HEAD:main
