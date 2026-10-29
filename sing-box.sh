@@ -2602,6 +2602,7 @@ check_system_info() {
 # 获取 sing-box 最新版本
 # 获取最新的正式稳定版 sing-box
 # 获取最新的正式稳定版 sing-box
+# 获取最新的正式稳定版 sing-box
 get_sing_box_version() {
   local FORCE_VERSION RESULT_VERSION
 
