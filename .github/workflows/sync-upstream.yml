@@ -42,7 +42,15 @@ jobs:
       - name: Apply stable-only version filter
         run: |
           python3 .github/scripts/apply-stable-filter.py
-      
+
+      - name: Apply Snell v5 patch
+        run: |
+          python3 .github/scripts/apply-snell.py
+
+      - name: Check shell syntax
+        run: |
+          bash -n sing-box.sh
+          
       - name: Commit customization
         run: |
           git add sing-box.sh
