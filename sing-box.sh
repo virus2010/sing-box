@@ -17,8 +17,8 @@ MAX_PORT=65520
 MIN_HOPPING_PORT=10000
 MAX_HOPPING_PORT=65535
 TLS_SERVER_DEFAULT=addons.mozilla.org
-PROTOCOL_LIST=("XTLS + reality" "hysteria2" "tuic" "ShadowTLS" "shadowsocks" "trojan" "vmess + ws" "vless + ws + tls" "H2 + reality" "gRPC + reality" "AnyTLS" "naive")
-NODE_TAG=("xtls-reality" "hysteria2" "tuic" "ShadowTLS" "shadowsocks" "trojan" "vmess-ws" "vless-ws-tls" "h2-reality" "grpc-reality" "anytls" "naive")
+PROTOCOL_LIST=("XTLS + reality" "hysteria2" "tuic" "ShadowTLS" "shadowsocks" "trojan" "vmess + ws" "vless + ws + tls" "H2 + reality" "gRPC + reality" "AnyTLS" "naive" "Snell")
+NODE_TAG=("xtls-reality" "hysteria2" "tuic" "ShadowTLS" "shadowsocks" "trojan" "vmess-ws" "vless-ws-tls" "h2-reality" "grpc-reality" "anytls" "naive" "snell")
 CONSECUTIVE_PORTS=${#PROTOCOL_LIST[@]}
 CDN_DOMAIN=("skk.moe" "ip.sb" "time.is" "cfip.xxxxxxxx.tk" "bestcf.top" "cdn.2020111.xyz" "xn--b6gac.eu.org" "cf.090227.xyz")
 SUBSCRIBE_TEMPLATE="https://raw.githubusercontent.com/fscarmen/client_template/main"
@@ -2604,6 +2604,7 @@ check_system_info() {
 # 获取最新的正式稳定版 sing-box
 # 获取最新的正式稳定版 sing-box
 # 获取最新的正式稳定版 sing-box
+# 获取最新的正式稳定版 sing-box
 get_sing_box_version() {
   local FORCE_VERSION RESULT_VERSION
 
@@ -3093,7 +3094,7 @@ sing-box_variables() {
   STEP_NUM=0
   # 预先用全选协议计算最大总步骤数，用于协议选择提示时显示 (1/?)
   local SAVED_PROTOCOLS=("${INSTALL_PROTOCOLS[@]}")
-  INSTALL_PROTOCOLS=(b c d e f g h i j k l m)
+  INSTALL_PROTOCOLS=(b c d e f g h i j k l m n)
   calc_install_steps
   INSTALL_PROTOCOLS=("${SAVED_PROTOCOLS[@]}")
 
@@ -5000,6 +5001,45 @@ EOF
 }
 EOF
   fi
+  # Generate Snell v5 inbound (protocol n; node index 23).
+  CHECK_PROTOCOLS=$(asc "$CHECK_PROTOCOLS" ++)
+  if [[ "${INSTALL_PROTOCOLS[@]}" =~ "$CHECK_PROTOCOLS" ]]; then
+    local SNELL_VERSION
+    SNELL_VERSION=$("$DIR/sing-box" version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
+    if [[ -z "$SNELL_VERSION" ]] || [[ "$(printf '%s\n' 1.14.0 "$SNELL_VERSION" | sort -V | head -n1)" != "1.14.0" ]]; then
+      error "Snell inbound requires sing-box 1.14.0 or newer; detected: ${SNELL_VERSION:-unknown}"
+    fi
+
+    [ -z "$PORT_SNELL" ] && PORT_SNELL=$((START_PORT + $(awk -v target="$CHECK_PROTOCOLS" '{ for(i=1; i<=NF; i++) if($i == target) { print i-1; break } }' <<< "${INSTALL_PROTOCOLS[*]}")))
+    NODE_NAME[23]=${NODE_NAME[23]:-"$NODE_NAME_CONFIRM"}
+    SNELL_PSK=${SNELL_PSK:-"$(openssl rand -hex 16)"}
+
+    if [ -z "$SNELL_OBFS_MODE" ]; then
+      if [[ "$IS_FAST_INSTALL" = 'is_fast_install' || "$NONINTERACTIVE_INSTALL" = 'noninteractive_install' ]]; then
+        SNELL_OBFS_MODE=none
+      else
+        hint "Snell v5 HTTP obfuscation: 1. none (default)  2. http"
+        reading "Choose [1/2]: " SNELL_OBFS_CHOICE
+        [[ "$SNELL_OBFS_CHOICE" = '2' ]] && SNELL_OBFS_MODE=http || SNELL_OBFS_MODE=none
+      fi
+    fi
+
+    cat > ${WORK_DIR}/conf/23_${NODE_TAG[12]}_inbounds.json << EOF
+{
+    "inbounds":[
+        {
+            "type":"snell",
+            "tag":"${NODE_NAME[23]} ${NODE_TAG[12]}",
+            "listen":"::",
+            "listen_port":$PORT_SNELL,
+            "version":5,
+            "psk":"${SNELL_PSK}",
+            "obfs_mode":"${SNELL_OBFS_MODE}"
+        }
+    ]
+}
+EOF
+  fi
 }
 
 # Sing-box 生成守护进程文件
@@ -5173,7 +5213,7 @@ EOF
 
 # 获取原有各协议的参数，先清空所有的 key-value
 fetch_nodes_value() {
-  unset NODE_NAME PORT_XTLS_REALITY UUID TLS_SERVER REALITY_PRIVATE REALITY_PUBLIC PORT_HYSTERIA2 HY2_REALM_ID IS_HY2_REALM IS_HY2_IGNORE IS_HY2_WARP PORT_TUIC TUIC_PASSWORD TUIC_CONGESTION_CONTROL PORT_SHADOWTLS SHADOWTLS_PASSWORD SHADOWSOCKS_METHOD PORT_SHADOWSOCKS PORT_TROJAN TROJAN_PASSWORD PORT_VMESS_WS VMESS_WS_PATH WS_SERVER_IP WS_SERVER_IP_SHOW VMESS_HOST_DOMAIN CDN CDN_PORT PORT_VLESS_WS VLESS_WS_PATH VLESS_HOST_DOMAIN PORT_H2_REALITY PORT_GRPC_REALITY ARGO_DOMAIN PORT_ANYTLS PORT_NAIVE SELF_SIGNED_FINGERPRINT_SHA256 SELF_SIGNED_FINGERPRINT_BASE64 IS_XTLS_MULTIPLEX
+  unset NODE_NAME PORT_XTLS_REALITY UUID TLS_SERVER REALITY_PRIVATE REALITY_PUBLIC PORT_HYSTERIA2 HY2_REALM_ID IS_HY2_REALM IS_HY2_IGNORE IS_HY2_WARP PORT_TUIC TUIC_PASSWORD TUIC_CONGESTION_CONTROL PORT_SHADOWTLS SHADOWTLS_PASSWORD SHADOWSOCKS_METHOD PORT_SHADOWSOCKS PORT_TROJAN TROJAN_PASSWORD PORT_VMESS_WS VMESS_WS_PATH WS_SERVER_IP WS_SERVER_IP_SHOW VMESS_HOST_DOMAIN CDN CDN_PORT PORT_VLESS_WS VLESS_WS_PATH VLESS_HOST_DOMAIN PORT_H2_REALITY PORT_GRPC_REALITY ARGO_DOMAIN PORT_ANYTLS PORT_NAIVE PORT_SNELL SNELL_PSK SNELL_OBFS_MODE SELF_SIGNED_FINGERPRINT_SHA256 SELF_SIGNED_FINGERPRINT_BASE64 IS_XTLS_MULTIPLEX
 
   # 获取公共数据
   ls ${WORK_DIR}/conf/*-ws*inbounds.json >/dev/null 2>&1 && SERVER_IP=$(awk -F '"' '/"WS_SERVER_IP_SHOW"/{print $4; exit}' ${WORK_DIR}/conf/*-ws*inbounds.json) || SERVER_IP=$([ -s ${WORK_DIR}/list ] && grep -A1 '"tag"' ${WORK_DIR}/list | sed -E '/-ws(-tls)*",$/{N;d}' | awk -F '"' '/"server"/{count++; if (count == 1) {print $4; exit}}')
@@ -5266,6 +5306,9 @@ fetch_nodes_value() {
 
   # 获取 naive key-value
   [ -s ${WORK_DIR}/conf/*_${NODE_TAG[11]}_inbounds.json ] && local JSON=$(cat ${WORK_DIR}/conf/*_${NODE_TAG[11]}_inbounds.json) && NODE_NAME[22]=$(sed -n "s/.*\"tag\":\"\(.*\) ${NODE_TAG[11]}.*/\1/p" <<< "$JSON") && PORT_NAIVE=$(sed -n 's/.*"listen_port":\([0-9]\+\),/\1/gp' <<< "$JSON") && UUID[22]=$(awk -F '"' '/"username"/{print $4; exit}' <<< "$JSON")
+
+  # Read Snell v5 settings
+  [ -s ${WORK_DIR}/conf/*_${NODE_TAG[12]}_inbounds.json ] && local JSON=$(cat ${WORK_DIR}/conf/*_${NODE_TAG[12]}_inbounds.json) && NODE_NAME[23]=$(sed -n "s/.*\"tag\":\"\(.*\) ${NODE_TAG[12]}.*/\1/p" <<< "$JSON") && PORT_SNELL=$(sed -n 's/.*"listen_port":[[:space:]]*\([0-9]\+\).*/\1/p' <<< "$JSON") && SNELL_PSK=$(awk -F '"' '/"psk"/{print $4; exit}' <<< "$JSON") && SNELL_OBFS_MODE=$(awk -F '"' '/"obfs_mode"/{print $4; exit}' <<< "$JSON")
 
   # 兜底：极早期版本 04_experimental.json 无 clash_api（cache_file-only），补全注入。
   # 同时剥离可能残留的 v2ray_api（官方 release 二进制默认不编译该功能，
@@ -5539,6 +5582,18 @@ export_list() {
   $CLASH_ANYTLS
 "
 
+  # Snell v5 for Mihomo / OpenClash
+  if [ -n "$PORT_SNELL" ]; then
+    if [ "$SNELL_OBFS_MODE" = 'http' ]; then
+      local CLASH_SNELL="- {name: \"${NODE_NAME[23]} ${NODE_TAG[12]}\", type: snell, server: ${SERVER_IP}, port: ${PORT_SNELL}, psk: \"${SNELL_PSK}\", version: 5, udp: true, obfs-opts: {mode: http, host: bing.com}}"
+    else
+      local CLASH_SNELL="- {name: \"${NODE_NAME[23]} ${NODE_TAG[12]}\", type: snell, server: ${SERVER_IP}, port: ${PORT_SNELL}, psk: \"${SNELL_PSK}\", version: 5, udp: true}"
+    fi
+    local CLASH_SUBSCRIBE+="
+  $CLASH_SNELL
+"
+  fi
+
   echo -n "${CLASH_SUBSCRIBE}" | sed -E '/^[ ]*#|^--/d' | sed '/^$/d' > ${WORK_DIR}/subscribe/proxies
 
   # 后台生成 clash 订阅配置文件
@@ -5547,9 +5602,9 @@ export_list() {
     cat ${TEMP_DIR}/clash | sed "s#NODE_NAME#${NODE_NAME_CONFIRM}#g; s#PROXY_PROVIDERS_URL#$SUBSCRIBE_ADDRESS/${UUID_CONFIRM}/proxies#" > ${WORK_DIR}/subscribe/clash
 
     # 模板2: 不使用 proxy providers
-    CLASH2_PORT=("$PORT_XTLS_REALITY" "$PORT_HYSTERIA2" "$PORT_TUIC" "$PORT_SHADOWTLS" "$PORT_SHADOWSOCKS" "$PORT_TROJAN" "$PORT_VMESS_WS" "$PORT_VLESS_WS" "$PORT_GRPC_REALITY" "$PORT_ANYTLS")
-    CLASH2_PROXY_INSERT=("$CLASH_XTLS_REALITY" "$CLASH_HYSTERIA2" "$CLASH_TUIC" "$CLASH_SHADOWTLS" "$CLASH_SHADOWSOCKS" "$CLASH_TROJAN" "$CLASH_VMESS_WS" "$CLASH_VLESS_WS" "$CLASH_GRPC_REALITY" "$CLASH_ANYTLS")
-    CLASH2_PROXY_GROUPS_INSERT=("- ${NODE_NAME[11]} ${NODE_TAG[0]}" "- ${NODE_NAME[12]} ${NODE_TAG[1]}" "- ${NODE_NAME[13]} ${NODE_TAG[2]}" "- ${NODE_NAME[14]} ${NODE_TAG[3]}" "- ${NODE_NAME[15]} ${NODE_TAG[4]}" "- ${NODE_NAME[16]} ${NODE_TAG[5]}" "- ${NODE_NAME[17]} ${NODE_TAG[6]}" "- ${NODE_NAME[18]} ${NODE_TAG[7]}" "- ${NODE_NAME[20]} ${NODE_TAG[9]}" "- ${NODE_NAME[21]} ${NODE_TAG[10]}")
+    CLASH2_PORT=("$PORT_XTLS_REALITY" "$PORT_HYSTERIA2" "$PORT_TUIC" "$PORT_SHADOWTLS" "$PORT_SHADOWSOCKS" "$PORT_TROJAN" "$PORT_VMESS_WS" "$PORT_VLESS_WS" "$PORT_GRPC_REALITY" "$PORT_ANYTLS" "$PORT_SNELL")
+    CLASH2_PROXY_INSERT=("$CLASH_XTLS_REALITY" "$CLASH_HYSTERIA2" "$CLASH_TUIC" "$CLASH_SHADOWTLS" "$CLASH_SHADOWSOCKS" "$CLASH_TROJAN" "$CLASH_VMESS_WS" "$CLASH_VLESS_WS" "$CLASH_GRPC_REALITY" "$CLASH_ANYTLS" "$CLASH_SNELL")
+    CLASH2_PROXY_GROUPS_INSERT=("- ${NODE_NAME[11]} ${NODE_TAG[0]}" "- ${NODE_NAME[12]} ${NODE_TAG[1]}" "- ${NODE_NAME[13]} ${NODE_TAG[2]}" "- ${NODE_NAME[14]} ${NODE_TAG[3]}" "- ${NODE_NAME[15]} ${NODE_TAG[4]}" "- ${NODE_NAME[16]} ${NODE_TAG[5]}" "- ${NODE_NAME[17]} ${NODE_TAG[6]}" "- ${NODE_NAME[18]} ${NODE_TAG[7]}" "- ${NODE_NAME[20]} ${NODE_TAG[9]}" "- ${NODE_NAME[21]} ${NODE_TAG[10]}" "- ${NODE_NAME[23]} ${NODE_TAG[12]}")
 
     CLASH2_YAML=$(cat ${TEMP_DIR}/clash2)
     for x in ${!CLASH2_PORT[@]}; do
@@ -6472,6 +6527,15 @@ change_protocols() {
     PORT_NAIVE=${REINSTALL_PORTS[POSITION]}
   else
     unset PORT_NAIVE
+  fi
+
+  # 获取 Snell v5 端口
+  CHECK_PROTOCOLS=$(asc "$CHECK_PROTOCOLS" ++)
+  if [[ "${INSTALL_PROTOCOLS[@]}" =~ "$CHECK_PROTOCOLS" ]]; then
+    POSITION=$(awk -v target=$CHECK_PROTOCOLS '{ for(i=1; i<=NF; i++) if($i == target) { print i-1; break } }' <<< "${INSTALL_PROTOCOLS[*]}")
+    PORT_SNELL=${REINSTALL_PORTS[POSITION]}
+  else
+    unset PORT_SNELL SNELL_PSK SNELL_OBFS_MODE
   fi
 
   # 生成各协议的 json 文件
