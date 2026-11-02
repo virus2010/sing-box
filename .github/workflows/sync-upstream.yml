@@ -1,0 +1,51 @@
+name: Sync upstream and apply stable filter
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout my fork
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Download upstream sing-box.sh
+        run: |
+          curl -fsSL \
+            https://raw.githubusercontent.com/fscarmen/sing-box/main/sing-box.sh \
+            -o sing-box.sh
+
+      - name: Apply stable-only version filter
+        run: |
+          python3 .github/scripts/apply-stable-filter.py
+
+      - name: Check shell syntax
+        run: |
+          bash -n sing-box.sh
+
+      - name: Commit customization
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sing-box.sh
+          if ! git diff --cached --quiet; then
+            git commit -m "Sync upstream and apply stable-only filter"
+          fi
+
+      - name: Push updates to my fork
+        run: |
+          git push origin HEAD:main
